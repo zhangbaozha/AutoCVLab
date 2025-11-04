@@ -1,0 +1,5 @@
+# 项目排除路径
+/.venv/
+/data
+/pretrained_weights
+/trained_models
