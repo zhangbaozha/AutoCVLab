@@ -1,11 +1,13 @@
 import json
+import time
 from io import BytesIO
 from typing import Dict, Any
 
 import requests
 from flask import Flask, request, jsonify, current_app
 from PIL import Image
-from model_manager import ModelManager, TrainManager
+from model_manager import ModelManager
+from train_manager import TrainManager
 
 app = Flask(__name__)
 manager = ModelManager()
@@ -69,12 +71,18 @@ def create_train_task():
         data = request.form
         model_name = data.get("model_name", "").strip()
         dataset_name = data.get("dataset_name", "").strip()
+        epochs = data.get("epochs", "").strip()
+        epochs = int(epochs)
+        batch_size = data.get("batch_size", "").strip()
+        batch_size = int(batch_size)
+        lr = float(data.get("lr", 0.001))
         print("model_name:",model_name)
         print()
         print("dataset_name:",dataset_name)
-        epochs = int(data.get("epochs", 3))
-        batch_size = int(data.get("batch_size", 32))
-        lr = float(data.get("lr", 0.001))
+        print()
+        print("epochs:",epochs)
+        print()
+        print("batch_size:",batch_size)
 
         # 参数验证
         if not model_name or not dataset_name:
@@ -108,8 +116,10 @@ def create_train_task():
 def get_train_status():
     """查询训练任务状态"""
     try:
+        time.sleep(5)
         task_id = request.args.get("task_id", "").strip()
-        print(task_id)
+        print("查询成功:", task_id)
+        print("task_id:",task_id)
         if not task_id:
             return jsonify({"code": 400, "message": "任务ID不能为空"}), 400
 
@@ -139,6 +149,7 @@ def get_train_result():
     """获取训练任务结果（仅完成后有效）"""
     try:
         task_id = request.args.get("task_id", "").strip()
+        print("task_id:", task_id)
         if not task_id:
             return jsonify({"code": 400, "message": "任务ID不能为空"}), 400
 
