@@ -1,7 +1,10 @@
 import json
 import time
+import sys
+from datetime import datetime
 from io import BytesIO
 from typing import Dict, Any
+from pathlib import Path
 
 import requests
 from flask import Flask, request, jsonify, current_app
@@ -9,10 +12,34 @@ from PIL import Image
 from model_manager import ModelManager
 from train_manager import TrainManager
 
+
+# ============ 日志配置 - 重定向 print ============
+class PrintLogger:
+    """将 print 输出重定向到文件"""
+    def __init__(self, log_file):
+        self.terminal = sys.stdout
+        self.log = open(log_file, 'a', encoding='utf-8')
+    
+    def write(self, message):
+        self.terminal.write(message)  # 保留控制台输出
+        self.log.write(message)
+        self.log.flush()  # 立即写入文件
+    
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+# 创建日志目录
+log_dir = Path("logs")
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / f"app_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+
+sys.stdout = PrintLogger(log_file)
+
+print(f"[{datetime.now()}] ========== 应用启动 ==========")
 app = Flask(__name__)
 manager = ModelManager()
 trainer = TrainManager()
-
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -129,6 +156,20 @@ def get_train_status():
 
         # 计算进度
         progress = _calculate_progress(result)
+        
+        # 如果训练完成,打印结果摘要
+        if result["status"] == "completed":
+            res_data = result["result"]
+            print("=" * 60)
+            print(f"[训练完成] 任务ID: {task_id}")
+            print(f"MODEL: {res_data['model_name']}")
+            print(f"DATASET: {res_data['dataset_name']}")
+            print(f"EPOCHS: {res_data['epochs']}")
+            print(f"VAL_ACC: {res_data['final_val_acc']*100:.2f}%")
+            print(f"LOSS CURVE: {res_data['loss_curve_url']}")
+            print(f"ACC CURVE: {res_data['acc_curve_url']}")
+            print("=" * 60)
+        
         return jsonify({
             "code": 200,
             "message": "查询成功",
